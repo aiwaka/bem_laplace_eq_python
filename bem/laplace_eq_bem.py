@@ -33,6 +33,17 @@ class Problem(EdgePoints):
         )
         # 共役境界量を計算
         self.conj_bd_values = self.calc_conjugate_boundary_values()
+        # 基本解の法線微分の列の計算のための法線ベクトル列
+        self.n_vecs = np.array([normal_vector(point) for point in self.points])
+        # 領域境界上で線積分するための配列を生成
+        # pointsから構成すると厳密に曲線上の積分にならないので, func_settingsの関数で作成するのが正確.
+        self.circ_x = np.append(
+            0.0,
+            np.linalg.norm(
+                np.roll(self.points, -1, axis=0) - self.points, axis=1
+            ).cumsum(),
+        )
+        # self.circ_x = 2 * np.pi * np.arange(self.div_num + 1) / self.div_num
 
     def make_boundary_condition(self) -> NDArray[np.float64]:
         """
@@ -56,26 +67,21 @@ class Problem(EdgePoints):
         y = self.points
         # 内点計算に使う基本解の値の列を計算
         fund_val = -np.log(np.linalg.norm(x - y, axis=1)) / 2.0 / np.pi
-        # 基本解の法線微分の列も計算
-        n_vecs = np.array([normal_vector(point) for point in y])
         fund_dv_val = (
-            np.einsum("ij,ij->i", x - y, n_vecs)
+            np.einsum("ij,ij->i", x - y, self.n_vecs)
             / 2.0
             / np.pi
             / np.linalg.norm(x - y, axis=1)
         )
-        # 積分するための配列
-        # とりあえず半径1の円周（あとでself.pointsから積分を構成できるように変更する）
-        circ_x = 2 * np.pi * np.arange(self.div_num + 1) / self.div_num
         result = 0
         # 一重層ポテンシャル; 周期的な配列を作成
         circ_y = np.append(
             fund_val * self.conj_bd_values, fund_val[0] * self.conj_bd_values[0]
         )
-        result += integral(circ_y, circ_x)
+        result += integral(circ_y, self.circ_x)
         # 二重層ポテンシャル
         circ_y = np.append(fund_dv_val * self.bc, fund_dv_val[0] * self.bc[0])
-        result -= integral(circ_y, circ_x)
+        result -= integral(circ_y, self.circ_x)
 
         return result
 
@@ -85,7 +91,7 @@ def main(div_num):
     # 影響係数行列を作成. ここに点列情報も入っている.
     problem = Problem(div_num)
     # 計算する内点リストを作成.
-    r_div = 8
+    r_div = 10
     calc_points = np.array(
         [
             [

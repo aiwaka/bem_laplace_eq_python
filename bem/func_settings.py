@@ -22,6 +22,14 @@ def normal_vector(x):
     return np.array([np.cos(theta), np.sin(theta)])
 
 
+def linear_integral_x(div_num) -> NDArray[np.float64]:
+    """
+    線積分の際に使う, 線の長さの累積配列を返す.
+    周回するため返り値は(div_num+1,)の形.
+    """
+    return 2 * np.pi * np.arange(div_num + 1) / div_num
+
+
 def make_points(div_num) -> NDArray[np.float64]:
     """
     ここで離散化された境界の点列を作る. 境界を変更したいならこれを変更する.
